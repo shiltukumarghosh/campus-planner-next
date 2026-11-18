@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { categories, priorities } from "../planner-options";
-import { getDatabase } from "./database";
+import { query } from "./database";
 
-export function listTasks() {
-  return getDatabase().prepare("SELECT * FROM tasks ORDER BY date, id")
-    .all().map(task => ({ ...task, done: Boolean(task.done) }));
+export async function listTasks() {
+  const { rows } = await query("SELECT * FROM tasks ORDER BY date, id");
+  return rows.map(({ id, title, category, date, subject, priority, notes, done }) =>
+    ({ id, title, category, date, subject, priority, notes, done: Boolean(done) }));
 }
 
 export function validateTask(input) {
@@ -19,24 +20,19 @@ export function validateTask(input) {
   return [title.trim(), category, date, subject.trim(), priority, notes.trim()];
 }
 
-export function addTask(db, values, done = false) {
-  db.prepare("INSERT INTO tasks (id, title, category, date, subject, priority, notes, done) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-    .run(randomUUID(), ...values, Number(done));
+export async function addTask(values) {
+  await query("INSERT INTO tasks (id, title, category, date, subject, priority, notes) VALUES (?, ?, ?, ?, ?, ?, ?)",
+    randomUUID(), ...values);
 }
 
-export function addTasksIfEmpty(entries) {
-  const db = getDatabase();
-  db.exec("BEGIN IMMEDIATE");
-  try {
-    if (db.prepare("SELECT id FROM tasks LIMIT 1").get()) {
-      db.exec("ROLLBACK");
-      return false;
-    }
-    for (const { values, done } of entries) addTask(db, values, done);
-    db.exec("COMMIT");
-    return true;
-  } catch (error) {
-    db.exec("ROLLBACK");
-    throw error;
-  }
+export async function addTasksIfEmpty(entries) {
+  const records = entries.map(({ values, done }) => [randomUUID(), ...values, Number(done)]);
+  const result = await query(`
+    INSERT INTO tasks (id, title, category, date, subject, priority, notes, done)
+    SELECT value ->> 0, value ->> 1, value ->> 2, value ->> 3,
+           value ->> 4, value ->> 5, value ->> 6, value ->> 7
+    FROM json_each(?)
+    WHERE NOT EXISTS (SELECT 1 FROM tasks)
+  `, JSON.stringify(records));
+  return result.rowsAffected > 0;
 }

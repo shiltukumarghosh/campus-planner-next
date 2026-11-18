@@ -29,4 +29,12 @@ Open http://localhost:3000.
 
 Next.js server actions verify the signed-in role before every task write. Sessions and tasks are stored in SQLite at `data/campus-planner.sqlite` by default. Both accounts use one shared class task list. Components in `app/components` provide the sign-in form and separate dashboards.
 
-Use `npm run build` followed by `npm start` for a production build on a Node.js server with a persistent writable disk. Set `CAMPUS_DB_PATH` to choose the database path. For a shared deployment, set `CAMPUS_TEACHER_PASSWORD` and `CAMPUS_STUDENT_PASSWORD` to distinct passwords and serve the app over HTTPS. The demo credentials are disabled when either password is configured, or when `CAMPUS_DEMO_MODE=off`. A serverless deployment with ephemeral storage requires a persistent database integration.
+Use `npm run build` followed by `npm start` for a production build on a Node.js server with a persistent writable disk. Set `CAMPUS_DB_PATH` to choose the local database path. For a shared deployment, set `CAMPUS_TEACHER_PASSWORD` and `CAMPUS_STUDENT_PASSWORD` to distinct passwords and serve the app over HTTPS. The demo credentials are disabled when either password is configured, or when `CAMPUS_DEMO_MODE=off`.
+
+### Deploy to Vercel
+
+1. Connect a [Turso database](https://vercel.com/marketplace/tursocloud/database) to the Campus Planner project in Vercel.
+2. In the project's environment variables, verify that `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are set for **Production**. Enable them for **Preview** too if you test preview deployments. Use a token with write access.
+3. Deploy the updated code and redeploy after changing environment variables. The app creates its tables when it first connects.
+
+Local SQLite files stay on the computer where they were created. A new Turso database starts with an empty task list.
